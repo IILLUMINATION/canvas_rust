@@ -45,8 +45,8 @@ pub const EDGE_HALF_PX: f32 = 0.6;
 pub const EDGE_MIN_PX: f32 = 2.5;
 /// A node must be at least this big on screen before its content is emitted;
 /// below that the text is unreadable and only costs frame time.
-pub const LABEL_MIN_W: f32 = 92.0;
-pub const LABEL_MIN_H: f32 = 34.0;
+pub const LABEL_MIN_W: f32 = 84.0;
+pub const LABEL_MIN_H: f32 = 30.0;
 
 const SCREEN_MARGIN: f32 = 16.0;
 
