@@ -150,6 +150,7 @@ class GraphPainter extends CustomPainter {
     fontSize: 11,
     fontWeight: FontWeight.w600,
     height: 1.0,
+    fontFamily: kShotFont,
   );
 
   final Map<int, TextPainter> _labelCache = <int, TextPainter>{};

@@ -8,6 +8,10 @@ import 'src/icons.dart';
 import 'src/native.dart';
 import 'src/painter.dart';
 
+/// Docs screenshots are taken with the HUD hidden (`--dart-define`), because the
+/// HUD would show numbers measured by the headless test rasteriser.
+const bool kCleanShots = bool.fromEnvironment('CANVAS_CLEAN_SHOTS');
+
 void main() => runApp(const CanvasApp());
 
 const Color _bg = Color(0xFF0B0F16);
@@ -145,8 +149,9 @@ class _CanvasPageState extends State<CanvasPage> {
                       ),
                     ),
                   ),
-                  Positioned(left: 12, bottom: 12, child: _hud()),
-                  const Positioned(
+                  if (!kCleanShots) Positioned(left: 12, bottom: 12, child: _hud()),
+                  if (!kCleanShots)
+                    const Positioned(
                     right: 12,
                     bottom: 14,
                     child: Text(

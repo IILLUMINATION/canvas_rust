@@ -48,6 +48,10 @@ class DemoContentProvider {
   }
 }
 
+/// Font used by node cards. `null` in production (platform default); the docs
+/// screenshots set it to a loaded family so text is readable headlessly.
+const String? kShotFont = bool.fromEnvironment('CANVAS_CLEAN_SHOTS') ? 'Roboto' : null;
+
 /// Inline SVG sources for the demo. Any string map works: the engine only needs
 /// `key -> svg markup`.
 const Map<String, String> demoIconSources = <String, String>{
@@ -101,6 +105,7 @@ class CardLayout {
             fontSize: fontSize,
             fontWeight: w,
             height: 1.15,
+            fontFamily: kShotFont,
           ),
         ),
         textDirection: TextDirection.ltr,

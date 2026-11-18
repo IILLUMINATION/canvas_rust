@@ -1,0 +1,22 @@
+   nodes  edges  build_ms  index_ms  frame_us    hit_us    vis@fit    lod@fit
+    1000   1443       0.2       0.6      87.7      1.82       1000          2
+   10000  14464       1.2       4.1     498.0      1.89      10000          0
+  100000 144886       7.0      17.4    3635.8      1.47      96415          0
+  500000 724798      27.9      92.7   23346.6      1.89     389718          0
+
+zoom sweep, 100k nodes (scale = logical px per world unit)
+     scale vis_nodes vis_edges   frame_us        lod
+    0.0200    96415   143984     3542.2          0
+    0.0400    35367    62745     3411.3          0
+    0.0800     8948    20718     1201.2          0
+    0.1600     2282     8369      509.6          0
+    0.3200      589     4397      359.5          2
+    0.6400      157     3046      311.6          2
+
+layout iteration cost (Barnes-Hut, theta 0.9)
+    1000 nodes:    0.00 ms/iteration
+   10000 nodes:    0.02 ms/iteration
+  100000 nodes:    0.19 ms/iteration
+
+frame budget: 16.67 ms (60 Hz) / 33.3 ms (30 Hz). frame_us is draw-list assembly only;
+GPU submission on the Flutter side is 2-3 draw calls for the whole scene.
