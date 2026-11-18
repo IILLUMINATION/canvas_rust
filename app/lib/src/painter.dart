@@ -121,7 +121,7 @@ class GraphPainter extends CustomPainter {
   final Perf perf;
 
   /// Optional per-node content (title, body, badge). When null the painter
-  /// falls back to a plain "Node <id>" label.
+  /// falls back to a plain `Node <id>` label.
   final NodeContentProvider? content;
 
   /// Rasterised SVG icons; lookups are cache hits, misses schedule a raster.

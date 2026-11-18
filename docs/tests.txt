@@ -1,24 +1,5 @@
 $ cargo test --release --manifest-path core/Cargo.toml
-test demo::tests::deterministic ... ok
-test demo::tests::no_degenerate_edges ... ok
-test draw::tests::dragged_node_is_always_emitted ... ok
-test ffi::tests::frame_carries_versions_and_geometry ... ok
-test graph::tests::rejects_bad_edges ... ok
-test graph::tests::selection_clears_on_invalid_id ... ok
-test ffi::tests::moves_do_not_change_structure_version ... ok
-test draw::tests::culling_matches_brute_force ... ok
-test index::tests::moved_nodes_stay_discoverable ... ok
-test layout::tests::empty_and_single_node_are_noops ... ok
-test tests::empty_frame_is_safe ... ok
-test hit::tests::pick_matches_brute_force ... ok
-test draw::tests::sections_tile_both_buffers_exactly ... ok
-test tests::pipeline_smoke ... ok
-test draw::tests::buffers_do_not_grow_after_warmup ... ok
-test index::tests::node_candidates_match_brute_force ... ok
-test draw::tests::emits_quads_for_dense_views ... ok
-test layout::tests::layout_reduces_edge_lengths ... ok
-test layout::tests::layout_keeps_graph_bounded ... ok
-test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
@@ -28,4 +9,4 @@ $ cd app && flutter test
 
 $ cd app && flutter analyze
 
-6 issues found. (ran in 1.2s)
+4 issues found. (ran in 0.7s)

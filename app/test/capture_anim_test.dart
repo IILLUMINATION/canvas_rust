@@ -1,6 +1,5 @@
 // Renders an animation of the canvas for the README (frames -> GIF/WebP).
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
