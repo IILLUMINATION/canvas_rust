@@ -88,7 +88,7 @@ pub unsafe extern "C" fn cv_demo(c: *mut Canvas, n: u32, seed: u32) {
     if let Some(c) = c.as_mut() {
         demo::build_seeded(&mut c.graph, n, seed as u64 | 1);
         c.layout.reset(&c.graph);
-        c.touch();
+        c.touch_structure();
     }
 }
 
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn cv_add_node(
 ) -> u32 {
     match c.as_mut() {
         Some(c) => {
-            c.touch();
+            c.touch_structure();
             c.graph.add_node(x, y, w, h, color)
         }
         None => NO,
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn cv_add_node(
 pub unsafe extern "C" fn cv_add_edge(c: *mut Canvas, a: u32, b: u32) -> u32 {
     match c.as_mut() {
         Some(c) => {
-            c.touch();
+            c.touch_structure();
             c.graph.add_edge(a, b)
         }
         None => NO,
@@ -163,6 +163,32 @@ pub unsafe extern "C" fn cv_zoom(c: *mut Canvas, sx: f32, sy: f32, factor: f32) 
 pub unsafe extern "C" fn cv_version(c: *mut Canvas) -> u32 {
     match c.as_mut() {
         Some(c) => c.version,
+        None => 0,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn cv_structure_version(c: *mut Canvas) -> u32 {
+    match c.as_mut() {
+        Some(c) => c.structure_version,
+        None => 0,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn cv_node_w(c: *mut Canvas, id: u32) -> f32 {
+    node_field(c, id, 2)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn cv_node_h(c: *mut Canvas, id: u32) -> f32 {
+    node_field(c, id, 3)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn cv_node_color(c: *mut Canvas, id: u32) -> u32 {
+    match c.as_mut() {
+        Some(c) => *c.graph.color.get(id as usize).unwrap_or(&0),
         None => 0,
     }
 }
@@ -262,16 +288,6 @@ pub unsafe extern "C" fn cv_node_y(c: *mut Canvas, id: u32) -> f32 {
     node_field(c, id, 1)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn cv_node_w(c: *mut Canvas, id: u32) -> f32 {
-    node_field(c, id, 2)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn cv_node_h(c: *mut Canvas, id: u32) -> f32 {
-    node_field(c, id, 3)
-}
-
 unsafe fn node_field(c: *mut Canvas, id: u32, field: usize) -> f32 {
     match c.as_mut() {
         Some(c) => {
@@ -350,5 +366,55 @@ pub unsafe extern "C" fn cv_layout_reset(c: *mut Canvas) {
         let mut l = std::mem::take(&mut c.layout);
         l.reset(&c.graph);
         c.layout = l;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Canvas;
+
+    /// The client's rule is: a node drag may keep using a stale overview, so
+    /// moves must not bump the structure version, while topology edits must.
+    #[test]
+    fn moves_do_not_change_structure_version() {
+        unsafe {
+            let c = cv_new();
+            cv_demo(c, 100, 1);
+            let sv = cv_structure_version(c);
+            assert!(sv > 0);
+
+            cv_move_node(c, 0, 123.0, 456.0);
+            cv_move_node(c, 1, 1.0, 2.0);
+            assert_eq!(cv_structure_version(c), sv, "moves must not bump structure");
+
+            cv_add_node(c, 0.0, 0.0, 10.0, 10.0, 0xFF00FF00);
+            assert_ne!(cv_structure_version(c), sv, "adding a node bumps structure");
+
+            let sv2 = cv_structure_version(c);
+            cv_add_edge(c, 0, 1);
+            assert_ne!(cv_structure_version(c), sv2, "adding an edge bumps structure");
+
+            cv_free(c);
+        }
+    }
+
+    #[test]
+    fn frame_carries_versions_and_geometry() {
+        unsafe {
+            let c = cv_new();
+            cv_demo(c, 50, 7);
+            cv_viewport(c, 800.0, 600.0);
+            cv_fit(c);
+            let f = cv_frame(c);
+            assert_eq!(f.total_nodes, 50);
+            assert!(f.vis_nodes > 0);
+            assert!(f.build_us < 1_000_000);
+            // geometry getters used by the live drag overlay
+            assert_eq!(cv_node_w(c, 0), 148.0);
+            assert_eq!(cv_node_h(c, 0), 50.0);
+            assert_ne!(cv_node_color(c, 0), 0);
+            cv_free(c);
+        }
     }
 }

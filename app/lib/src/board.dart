@@ -114,6 +114,8 @@ class _GraphBoardState extends State<GraphBoard> with SingleTickerProviderStateM
         _dragWorldX = widget.core.nodeX(id);
         _dragWorldY = widget.core.nodeY(id);
         _dragScale = widget.core.scale;
+        // tell the painter: keep blitting the baked overview, draw this node live
+        _painter.startDrag(id);
       } else {
         _dragNode = GraphCore.noNode;
       }
@@ -157,7 +159,10 @@ class _GraphBoardState extends State<GraphBoard> with SingleTickerProviderStateM
 
   void _onUp(PointerEvent e) {
     _pointers.remove(e.pointer);
-    if (_pointers.isEmpty) _dragNode = GraphCore.noNode;
+    if (_pointers.isEmpty && _dragNode != GraphCore.noNode) {
+      _dragNode = GraphCore.noNode;
+      _painter.endDrag();
+    }
     widget.tick.value++;
   }
 

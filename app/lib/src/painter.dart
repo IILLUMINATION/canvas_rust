@@ -89,9 +89,14 @@ class Perf {
 
 /// Baked overview: one `ui.Image` covering [world] at [bakeScale] px/unit.
 class _Overview {
-  _Overview(this.image, this.version, this.bakeScale, this.world, this.coversAll);
+  _Overview(this.image, this.sv, this.gv, this.bakeScale, this.world, this.coversAll);
   final ui.Image image;
-  final int version;
+
+  /// Structure version the bake was made for: changes on topology/size edits.
+  final int sv;
+
+  /// Geometry version at bake time: node moves bump it.
+  final int gv;
   final double bakeScale;
 
   /// World rect the image covers.
@@ -159,8 +164,33 @@ class GraphPainter extends CustomPainter {
   _Overview? _overview;
   int _lastSelected = GraphCore.noNode;
   bool _baking = false;
+
+  /// Node currently being dragged; drawn live on top of a stale overview so the
+  /// user still sees it move without re-rendering 300k quads per frame.
+  int _dragNode = GraphCore.noNode;
+
+  /// True while a stale overview may be blitted (during and just after a drag).
+  bool _staleOk = false;
+  bool _forceBake = false;
+
+  /// Number of completed overview bakes (test hook).
+  int bakes = 0;
+
+  void startDrag(int id) {
+    _dragNode = id;
+    _staleOk = true;
+  }
+
+  /// Dragging ended: keep blitting the stale bitmap, re-bake immediately, and
+  /// drop the live node overlay as soon as the fresh bitmap lands.
+  void endDrag() {
+    if (_dragNode == GraphCore.noNode) _staleOk = false;
+    _dragNode = GraphCore.noNode;
+    _forceBake = true;
+    tick.value++;
+  }
   bool _closed = false;
-  int _seenVersion = 0;
+  int _seenStructure = -1;
   int _versionChangedMs = 0;
   double _seenScale = 0;
   int _scaleChangedMs = 0;
@@ -180,18 +210,25 @@ class GraphPainter extends CustomPainter {
     if (core.pendingFit) core.fit();
 
     // Fast path: valid baked overview -> one textured quad, no core work at all.
-    final version = core.version;
     final sc = core.scale;
     final ov = _overview;
-    if (ov != null && ov.version == version && _ratioOk(sc / ov.bakeScale)) {
-      if (_blit(canvas, size, ov, sc)) {
-        perf.draws = 1;
-        if (_lastSelected != GraphCore.noNode) {
-          _drawSelection(canvas, size, _lastSelected);
-          perf.draws++;
+    if (ov != null && ov.sv == core.structureVersion) {
+      final fresh = ov.gv == core.version;
+      if ((fresh || _staleOk) && _ratioOk(sc / ov.bakeScale)) {
+        if (fresh) _staleOk = false;
+        if (_blit(canvas, size, ov, sc)) {
+          perf.draws = 1;
+          if (_forceBake && !_baking) _maybeBake(size, null);
+          if (_staleOk && _dragNode != GraphCore.noNode) {
+            _drawNodeOverlay(canvas, size, _dragNode);
+            perf.draws++;
+          } else if (_lastSelected != GraphCore.noNode) {
+            _drawSelection(canvas, size, _lastSelected);
+            perf.draws++;
+          }
+          perf.tickFrame();
+          return;
         }
-        perf.tickFrame();
-        return;
       }
     }
 
@@ -232,11 +269,22 @@ class GraphPainter extends CustomPainter {
     return true;
   }
 
-  void _maybeBake(Size size, GFrame fr) {
-    if (_baking || _closed || fr.visNodes < kOverviewNodes) return;
+  void _maybeBake(Size size, GFrame? fr) {
+    if (_baking || _closed) return;
+    if (fr != null && fr.visNodes < kOverviewNodes) return;
+    if (_forceBake) {
+      _forceBake = false;
+      _bake(size);
+      return;
+    }
+    if (fr == null) return;
+    // A drag keeps mutating node positions; that must not block baking, and an
+    // existing bitmap must not be thrown away mid-drag either.
+    if (_staleOk && _overview != null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    if (fr.version != _seenVersion) {
-      _seenVersion = fr.version;
+    final sv = core.structureVersion;
+    if (sv != _seenStructure) {
+      _seenStructure = sv;
       _versionChangedMs = now;
       return;
     }
@@ -292,7 +340,8 @@ class GraphPainter extends CustomPainter {
     core.setCamera(camX, camY, sc);
 
     _baking = true;
-    final version = bakeFrame.version;
+    final gv = bakeFrame.version;
+    final sv = core.structureVersion;
     final scale = bakeScale;
     final covered = world;
     final coversAll = covered.left <= graphBounds.left &&
@@ -306,8 +355,12 @@ class GraphPainter extends CustomPainter {
         return;
       }
       _overview?.image.dispose();
-      _overview = _Overview(image, version, scale, covered, coversAll);
+      _overview = _Overview(image, sv, gv, scale, covered, coversAll);
       _baking = false;
+      // Mid-drag the bitmap is intentionally stale: keep blitting it (with the
+      // live node on top) instead of re-entering the slow path.
+      if (_dragNode == GraphCore.noNode) _staleOk = false;
+      bakes++;
       tick.value++;
     });
   }
@@ -450,6 +503,25 @@ class GraphPainter extends CustomPainter {
     if (hit != null) return hit;
     if (_cardCache.length > 2048) _cardCache.clear();
     return _cardCache[key] = CardLayout.build(c, sizeQ, rect.width);
+  }
+
+  /// The dragged node is drawn live on top of the stale overview bitmap.
+  void _drawNodeOverlay(Canvas canvas, Size size, int id) {
+    final sc = core.scale;
+    final sx = (core.nodeX(id) - core.camX) * sc + size.width * 0.5;
+    final sy = (core.nodeY(id) - core.camY) * sc + size.height * 0.5;
+    final w = math.max(2.0, core.nodeW(id) * sc);
+    final h = math.max(2.0, core.nodeH(id) * sc);
+    final rect = Rect.fromCenter(center: Offset(sx, sy), width: w, height: h);
+    _nodePaint.color = Color(core.nodeColor(id));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(math.min(6.0, h * 0.18))),
+      _nodePaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.inflate(2), Radius.circular(math.min(8.0, h * 0.22))),
+      _ringPaint,
+    );
   }
 
   void _drawSelection(Canvas canvas, Size size, int id) {

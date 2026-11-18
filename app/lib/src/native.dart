@@ -204,6 +204,14 @@ final double Function(Pointer<Void>) _cvViewCx =
     _lib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('cv_view_cx');
 final double Function(Pointer<Void>) _cvViewCy =
     _lib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('cv_view_cy');
+final int Function(Pointer<Void>) _cvStructureVersion = _lib
+    .lookupFunction<Uint32 Function(Pointer<Void>), int Function(Pointer<Void>)>('cv_structure_version');
+final double Function(Pointer<Void>, int) _cvNodeW = _lib
+    .lookupFunction<Float Function(Pointer<Void>, Uint32), double Function(Pointer<Void>, int)>('cv_node_w');
+final double Function(Pointer<Void>, int) _cvNodeH = _lib
+    .lookupFunction<Float Function(Pointer<Void>, Uint32), double Function(Pointer<Void>, int)>('cv_node_h');
+final int Function(Pointer<Void>, int) _cvNodeColor = _lib
+    .lookupFunction<Uint32 Function(Pointer<Void>, Uint32), int Function(Pointer<Void>, int)>('cv_node_color');
 final double Function(Pointer<Void>, int) _cvNodeX = _lib
     .lookupFunction<Float Function(Pointer<Void>, Uint32), double Function(Pointer<Void>, int)>('cv_node_x');
 final double Function(Pointer<Void>, int) _cvNodeY = _lib
@@ -308,8 +316,15 @@ class GraphCore {
   double get camX => _cvViewCx(_h);
   double get camY => _cvViewCy(_h);
 
+  /// Topology/size version: node moves do not change it, so a cached overview
+  /// stays usable while a node is being dragged.
+  int get structureVersion => _cvStructureVersion(_h);
+
   double nodeX(int id) => _cvNodeX(_h, id);
   double nodeY(int id) => _cvNodeY(_h, id);
+  double nodeW(int id) => _cvNodeW(_h, id);
+  double nodeH(int id) => _cvNodeH(_h, id);
+  int nodeColor(int id) => _cvNodeColor(_h, id);
 
   int hit(double x, double y) => _cvHit(_h, x, y);
   /// Runs [iters] layout iterations, returns the remaining temperature.

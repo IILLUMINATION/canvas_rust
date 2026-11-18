@@ -27,9 +27,12 @@ pub struct Canvas {
     pub view: View,
     pub draw: DrawList,
     pub layout: Layout,
-    /// Bumped on every mutation that changes what a frame looks like; the
-    /// client uses it to invalidate its cached overview bitmap.
+    /// Bumped on every mutation that changes what a frame looks like.
     pub version: u32,
+    /// Bumped only by topology/size changes. Node moves leave it alone, so the
+    /// client can keep panning a slightly stale overview bitmap while a node is
+    /// being dragged instead of falling back to drawing 300k quads per frame.
+    pub structure_version: u32,
 }
 
 impl Default for Canvas {
@@ -52,6 +55,7 @@ impl Canvas {
             draw: DrawList::default(),
             layout: Layout::default(),
             version: 1,
+            structure_version: 1,
         }
     }
 
@@ -77,6 +81,12 @@ impl Canvas {
     #[inline]
     pub fn touch(&mut self) {
         self.version = self.version.wrapping_add(1);
+    }
+
+    #[inline]
+    pub fn touch_structure(&mut self) {
+        self.version = self.version.wrapping_add(1);
+        self.structure_version = self.structure_version.wrapping_add(1);
     }
 
     pub fn set_camera(&mut self, cx: f32, cy: f32, scale: f32) {
